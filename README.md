@@ -37,18 +37,18 @@ In order to run an instance of offline directline, you'll need to create a new p
 4. Run your code (node app.js in the command line)!
 
 ```js
-const directline = require("offline-directline");
+const directline = require("offline-directline-gss");
 const express = require("express");
-
+ 
 const app = express();
-
+ 
 const bot = {
-            "botId": "YOURBOTID",
-            "botUrl": "YOURBOTENDPOINT",
-            "msaAppId": "YOURBOTMSAAppId",
-            "msaPassword": "YOURBOTMSAPassword"
+            "botId": "mybotid",
+            "botUrl": "http://localhost:3979/api/messages",
+            "msaAppId": "",
+            "msaPassword": ""
           };
-
+ 
 directline.initializeRoutes(app, "http://127.0.0.1:3000", bot);
 ```
 
