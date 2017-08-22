@@ -49,9 +49,9 @@ export const initializeRoutes = (app: express.Server, serviceUrl: string, bot: I
         });
     })
 
-    const port = app.get("port");
+    const port = app.get("port") || 3000;
 
-    app.listen(port || 3000, () => {
+    app.listen(port, () => {
         console.log("Listening on port %d", port);
     });
 
@@ -68,10 +68,11 @@ export const initializeRoutes = (app: express.Server, serviceUrl: string, bot: I
             //If the bot has pushed anything into the history array
             if (history.length > watermark) {
                 let activities = getActivitiesSince(watermark);
-                res.status(200).json({
+                const sendJson = {
                     activities,
                     watermark: watermark + activities.length
-                });
+                };
+                res.status(200).json(sendJson);
             } else {
                 res.status(200).send({
                     activities: [],
@@ -92,10 +93,14 @@ export const initializeRoutes = (app: express.Server, serviceUrl: string, bot: I
             //If the bot has pushed anything into the history array
             if (history.length > watermark) {
                 let activities = getActivitiesSince(watermark);
-                res.status(200).json({
+                const sendJson = {
                     activities,
                     watermark: watermark + activities.length
-                });
+                };
+                console.log(sendJson);
+                res.writeHead(200, {"Content-Type": "application/json"});
+                const sendJsonStr = JSON.stringify(sendJson);
+                res.end(sendJsonStr);
             } else {
                 res.status(200).send({
                     activities: [],

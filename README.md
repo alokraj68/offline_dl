@@ -16,7 +16,7 @@ NOTE: Not all routes (e.g. attachments) are fully implemented in this package. F
 ### NPM
 
 ```sh
-npm install --save offline-directline
+npm install --save offline-directline-gss
 ```
 
 ## Usage
