@@ -15,15 +15,25 @@ import { IBot, IBotData } from './types/botTypes';
 import { Conversation } from './conversationManager';
 
 const expires_in = 1800;
-let conversationId: string;
+//let conversationId: string;
 let botDataStore: { [key: string]: IBotData } = {};
-let history: IActivity[];
+let history: {[key: string]: IActivity[]} = {};
+let conversationUsers:{[key:string]: string} = {};
 
+/*
 let uniqueId: string = uuidv4();
 let userName: string = `user-${uniqueId}`;
 let user: IUser = { name: userName, id: uniqueId };
+*/
 
-export const initializeRoutes = (app: express.Server, serviceUrl: string, bot: IBot) => {
+//export const initializeRoutes = (app: express.Server, config: string, bot: IBot) => {
+export const initializeRoutes = (app: express.Server, config: any) => {
+    const port = config.localDirectLine.port || 3000;
+    let serviceUrl = `${config.localDirectLine.url}:${port}`;
+    console.log(serviceUrl + ':' + port);
+    //todo:目前先固定使用一個
+    const bot: IBot = config.apbots[0].mybot;
+    
     app.use(bodyParser.json()); // for parsing application/json
     app.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
     app.use((req, res, next) => {
@@ -40,8 +50,8 @@ export const initializeRoutes = (app: express.Server, serviceUrl: string, bot: I
 
     //Creates a conversation
     app.post('/directline/conversations', (req, res) => {
-        history = [];
-        conversationId = uuidv4();
+        let conversationId = uuidv4();
+        history[conversationId] = [];
         console.log("Created conversation with conversationId: " + conversationId);
         res.send({
             conversationId,
@@ -49,8 +59,7 @@ export const initializeRoutes = (app: express.Server, serviceUrl: string, bot: I
         });
     })
 
-    const port = app.get("port") || 3000;
-
+    
     app.listen(port, () => {
         console.log("Listening on port %d", port);
     });
@@ -63,11 +72,12 @@ export const initializeRoutes = (app: express.Server, serviceUrl: string, bot: I
     //Gets activities from store (local history array for now)
     app.get('/directline/conversations/:conversationId/activities', (req, res) => {
         let watermark = Number(req.query.watermark || 0);
+        let queryConversationId = req.params.conversationId;
 
-        if (history) {
+        if (history[queryConversationId]) {
             //If the bot has pushed anything into the history array
-            if (history.length > watermark) {
-                let activities = getActivitiesSince(watermark);
+            if (history[queryConversationId].length > watermark) {
+                let activities = getActivitiesSince(queryConversationId, watermark);
                 const sendJson = {
                     activities,
                     watermark: watermark + activities.length
@@ -88,11 +98,11 @@ export const initializeRoutes = (app: express.Server, serviceUrl: string, bot: I
     //Gets activities from store (local history array for now)
     app.get('/directline/conversations/:conversationId', (req, res) => {
         let watermark = Number(req.query.watermark || 0);
-
-        if (history) {
+        let queryConversationId = req.params.conversationId;
+        if (history[queryConversationId]) {
             //If the bot has pushed anything into the history array
-            if (history.length > watermark) {
-                let activities = getActivitiesSince(watermark);
+            if (history[queryConversationId].length > watermark) {
+                let activities = getActivitiesSince(queryConversationId, watermark);
                 const sendJson = {
                     activities,
                     watermark: watermark + activities.length
@@ -115,14 +125,15 @@ export const initializeRoutes = (app: express.Server, serviceUrl: string, bot: I
 
     //Sends message to bot. Assumes message activities. 
     app.post('/directline/conversations/:conversationId/activities', (req, res) => {
-
         let incomingActivity = req.body;
+        let queryConversationId = req.params.conversationId;
         //make copy of activity. Add required fields. 
-        let activity = createMessageActivity(incomingActivity, serviceUrl);
-
+        let activity = createMessageActivity(incomingActivity, serviceUrl, queryConversationId);
+        
         if (activity) {
-            var conversation = new Conversation(conversationId, user, bot);
-
+            let user: IUser = { name: activity.from.name, id: activity.from.id };
+            conversationUsers[queryConversationId] = user.id;
+            var conversation = new Conversation(queryConversationId, user, bot);
             conversation.postActivityToBot(activity, true, (err, statusCode, activityId) => {
                 if (err || !/^2\d\d$/.test(`${statusCode}`)) {
                     res.send(statusCode || HttpStatus.INTERNAL_SERVER_ERROR);
@@ -134,23 +145,69 @@ export const initializeRoutes = (app: express.Server, serviceUrl: string, bot: I
         }
     })
 
+     // BOT CONVERSATION ENDPOINT
     app.post('/v3/directline/conversations/:conversationId/upload', (req, res) => { console.warn("/v3/directline/conversations/:conversationId/upload not implemented") })
     app.get('/v3/directline/conversations/:conversationId/stream', (req, res) => { console.warn("/v3/directline/conversations/:conversationId/stream not implemented") })
 
-    // BOT CONVERSATION ENDPOINT
+    app.post('/v3/conversations', (req, res) => { 
+        console.warn("/v3/conversations");
+        //ap bot 要求建立一個 conversation
+        const auth = req.header('Authorization');
+        //const tokenMatch = /Bearer\s+(.+)/.exec(auth);
+        //let conversationId = tokenMatch[1];
+        //console.log('/v3/conversations', conversationId);
 
-    app.post('/v3/conversations', (req, res) => { console.warn("/v3/conversations not implemented") })
-    app.post('/v3/conversations/:conversationId/activities', (req, res) => { console.warn("/v3/conversations/:conversationId/activities") })
+        var bot = req.body.bot || {};
+        var members = req.body.members || [];
+        let conversationId = '';
+        if(members.length > 0){
+            const numberId = members[0].id;
+            var convId = Object.keys(conversationUsers).filter(key=>{
+                console.log('conversationUsers', conversationUsers);
+                console.log('conversationUsers key', key);
+                return conversationUsers[key] === numberId;
+            });
+            if(convId.length > 0){
+                conversationId = convId[0];
+                console.log("use conversation with conversationId: " + conversationId);
+            }else{
+                conversationId = uuidv4();
+                history[conversationId] = [];
+                console.log("Created conversation with conversationId: " + conversationId);
+                
+            }
+          
+            let id = conversationId;
+            let token = conversationId;
+            res.status(200).send({
+                conversationId,
+                expires_in,
+                id,
+                token
+            });
+        }
+    });
+
+    app.post('/v3/conversations/:conversationId/activities', (req, res) => { 
+        console.warn("/v3/conversations/:conversationId/activities");
+        let incomingActivity = req.body;
+        let queryConversationId = req.params.conversationId;
+        incomingActivity.id = incomingActivity.id || uuidv4();
+        if (incomingActivity) {
+            history[queryConversationId].push(incomingActivity);
+            res.send(200, { id: incomingActivity.id });
+        }
+    });
 
     app.post('/v3/conversations/:conversationId/activities/:activityId', (req, res) => {
         let activity: IActivity;
-
+        let queryConversationId = req.params.conversationId;
         activity = req.body;
         activity.id = uuidv4();
         activity.from = { id: "id", name: "Bot" };
 
         if (history) {
-            history.push(activity);
+            history[queryConversationId].push(activity);
             res.status(200).send();
         } else {
             console.warn("Client is attempting to send messages before conversation is initialized.");
@@ -251,12 +308,12 @@ const deleteStateForUser = (req: express.Request, res: express.Response) => {
 }
 
 //CLIENT ENDPOINT HELPERS
-const createMessageActivity = (incomingActivity: IMessageActivity, serviceUrl: string): IMessageActivity => {
+const createMessageActivity = (incomingActivity: IMessageActivity, serviceUrl: string,  conversationId:string): IMessageActivity => {
     return { ...incomingActivity, channelId: "emulator", serviceUrl: serviceUrl, conversation: { 'id': conversationId }, id: uuidv4() };
 }
 
-const getActivitiesSince = (watermark: number): IActivity[] => {
-    return history.slice(watermark);
+const getActivitiesSince = (key:string, watermark: number): IActivity[] => {
+    return history[key].slice(watermark);
 }
 
 

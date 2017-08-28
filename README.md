@@ -37,19 +37,48 @@ In order to run an instance of offline directline, you'll need to create a new p
 4. Run your code (node app.js in the command line)!
 
 ```js
-const directline = require("offline-directline-gss");
+const url = require("url");
+//const directline = require("offline-directline-gss");
+const directline = require("../dist/bridge");
 const express = require("express");
- 
 const app = express();
- 
-const bot = {
-            "botId": "mybotid",
-            "botUrl": "http://localhost:3979/api/messages",
-            "msaAppId": "",
-            "msaPassword": ""
-          };
- 
-directline.initializeRoutes(app, "http://127.0.0.1:3000", bot);
+
+// const bot = {
+//     "botId": "mybotid",
+//     "botUrl": "http://localhost:3979/api/messages",
+//     "msaAppId": "",
+//     "msaPassword": ""
+//   };
+// const port = process.env.PORT;
+// const serviceUrl = "http://127.0.0.1:3000:" + port;
+
+// app.set("port", port);
+// app.get('/', function (req, res) {
+//     res.send('Offline Directline Bot Connector');
+// });
+const config = {
+    localDirectLine: {
+        url: "http://127.0.0.1",
+        port: "3000"
+        },
+	apbots:[
+		{
+			mybot:{
+                botId:"mlbot",
+                botUrl:"http://localhost:3979/api/messages",
+                "msaAppId": "",
+                "msaPassword": ""
+            },
+			iota:{
+				webhook:"",
+				secret:"",
+				token:""
+				}
+		}
+	]
+};
+
+directline.initializeRoutes(app, config);
 ```
 
 ### Build a bot 
@@ -61,13 +90,35 @@ Once you have a bot service built, the only thing you need is your bot messaging
 Though you could create your own client to connect to the directline endpoint that this package creates, I'll demonstrate this connection using the Microsoft Bot Framework WebChat channel. See the [Webchat Github Repo](https://github.com/Microsoft/BotFramework-WebChat) samples to get your client set up. Again, keep in mind that you won't actually need to register a bot or channels. As the samples demonstrate, you will create a BotChat.App which you will pass a directline object into. Add the a field for webSocket and set it to false, as in:
 
 ```js
+const params = BotChat.queryParams(location.search);
+const defaultUserId = Math.random().toString(36).substring(7);
+const user = {
+id: params['userid'] || defaultUserId,
+name: params['username'] || defaultUserId
+};
+
+const bot = {
+id: params['botid'] || 'mlbot',
+name: params['botname'] || 'MeetingBot'
+};
+
+window['botchatDebug'] = params['debug'] && params['debug'] === 'true';
+var domainUrl = 'http://localhost:3000/directline'; //params['domain']
 BotChat.App({
-    directLine: {
-        secret: params['s'],
-        token: params['t'],
-        domain: params['domain'],
-        webSocket: false // defaults to true
-    },
+bot: bot,
+locale: params['locale'],
+resize: 'window',
+// sendTyping: true,    // defaults to false. set to true to send 'typing' activities to bot (and other users) when user is typing
+user: user,
+
+directLine: {
+    secret:  params['s'],
+    token: params['t'],
+    domain: domainUrl,
+    webSocket: false // defaults to true
+    , pollingInterval: 5000
+}
+}, document.getElementById('BotChatGoesHere'));
 ```
 This package is not using websockets, so this is our way of telling webchat to use polling instead. 
 
