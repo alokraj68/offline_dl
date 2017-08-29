@@ -41,3 +41,8 @@ export interface IUserSettings {
     currentUserId?: string,
     usersById?: { [id: string]: IUser }
 }
+
+export interface IUserConversation {
+    botId:string
+    conversationId:string
+}

@@ -24,18 +24,17 @@ const config = {
         },
 	apbots:[
 		{
-			mybot:{
-                botId:"mlbot",
-                botUrl:"http://localhost:3979/api/messages",
-                "msaAppId": "",
-                "msaPassword": ""
-            },
-			iota:{
-				webhook:"",
-				secret:"",
-				token:""
-				}
-		}
+			botId:"mybot",
+			botUrl:"http://localhost:3979/api/messages",
+			"msaAppId": "",
+			"msaPassword": ""
+		},
+		{
+			botId:"mybot2",
+			botUrl:"http://localhost:3978/api/messages",
+			"msaAppId": "",
+			"msaPassword": ""
+		},
 	]
 };
 

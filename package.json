@@ -1,6 +1,6 @@
 {
   "name": "offline-directline-gss",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "description": "Unofficial offline version of the Bot Framework Directline connector fork from https://github.com/sebnema/offline_dl",
   "homepage": "https://github.com/sebnema/offline_dl",
   "main": "dist/bridge.js",
@@ -17,14 +17,16 @@
   "license": "ISC",
   "dependencies": {
     "@types/dotenv": "^4.0.0",
+    "@types/http-status-codes": "1.0.29",
     "@types/isomorphic-fetch": "0.0.34",
+    "@types/lodash": "^4.14.74",
     "body-parser": "^1.17.2",
     "es6-promise": "^4.1.1",
     "express": "^4.15.3",
-    "isomorphic-fetch": "^2.2.1",
-    "uuid": "^3.1.0",
     "http-status-codes": "^1.2.0",
-    "@types/http-status-codes": "1.0.29",
-    "request": "^2.81.0"
+    "isomorphic-fetch": "^2.2.1",
+    "lodash": "^4.17.4",
+    "request": "^2.81.0",
+    "uuid": "^3.1.0"
   }
 }

@@ -63,18 +63,17 @@ const config = {
         },
 	apbots:[
 		{
-			mybot:{
-                botId:"mlbot",
-                botUrl:"http://localhost:3979/api/messages",
-                "msaAppId": "",
-                "msaPassword": ""
-            },
-			iota:{
-				webhook:"",
-				secret:"",
-				token:""
-				}
-		}
+			botId:"mybot",
+			botUrl:"http://localhost:3979/api/messages",
+			"msaAppId": "",
+			"msaPassword": ""
+		},
+		{
+			botId:"mybot2",
+			botUrl:"http://localhost:3978/api/messages",
+			"msaAppId": "",
+			"msaPassword": ""
+		},
 	]
 };
 
@@ -112,7 +111,7 @@ resize: 'window',
 user: user,
 
 directLine: {
-    secret:  params['s'],
+    secret:  params['s'] || 'mybot',
     token: params['t'],
     domain: domainUrl,
     webSocket: false // defaults to true
@@ -131,3 +130,8 @@ Offline directline doesn't require a token or secret, so don't worry about these
 
 
 Once everything is running, you should see messages sent in through webchat passed through to your bot and vice versa. Your bot should also be able to set privateConversationData, conversationData and userData as offered by the botbuilder SDKs.
+
+### Local DirectLine Server v 1.1.8 調整說明
+* Support 多使用者
+* Support 從 bot 建立新的 conversation ，例如 Conversations.CreateDirectConversationAsync
+* Support 可以接多個 bot ，取自 request Header 的 Authorization 

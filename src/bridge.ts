@@ -3,9 +3,11 @@ import bodyParser = require('body-parser');
 import 'isomorphic-fetch';
 import * as uuidv4 from 'uuid/v4';
 import * as HttpStatus from "http-status-codes";
+import * as _ from 'lodash';
+
 var http = require('http');
 
-import { IUser } from './types/userTypes';
+import { IUser, IUserConversation } from './types/userTypes';
 import { IActivity, IConversationUpdateActivity, IMessageActivity, ITypingActivity, IInvokeActivity } from './types/activityTypes';
 import { IAttachment } from './types/attachmentTypes';
 import { IConversationAccount, IChannelAccount } from './types/accountTypes';
@@ -18,8 +20,8 @@ const expires_in = 1800;
 //let conversationId: string;
 let botDataStore: { [key: string]: IBotData } = {};
 let history: {[key: string]: IActivity[]} = {};
-let conversationUsers:{[key:string]: string} = {};
-
+let userConversations:{[key:string]: IUserConversation[]} = {};
+let apBots : IBot[] = [];
 /*
 let uniqueId: string = uuidv4();
 let userName: string = `user-${uniqueId}`;
@@ -32,7 +34,8 @@ export const initializeRoutes = (app: express.Server, config: any) => {
     let serviceUrl = `${config.localDirectLine.url}:${port}`;
     console.log(serviceUrl + ':' + port);
     //todo:目前先固定使用一個
-    const bot: IBot = config.apbots[0].mybot;
+    //const bot: IBot = config.apbots[0].mybot;
+    apBots = config.apbots;
     
     app.use(bodyParser.json()); // for parsing application/json
     app.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
@@ -129,10 +132,12 @@ export const initializeRoutes = (app: express.Server, config: any) => {
         let queryConversationId = req.params.conversationId;
         //make copy of activity. Add required fields. 
         let activity = createMessageActivity(incomingActivity, serviceUrl, queryConversationId);
-        
+        const bot = getBot(req);
         if (activity) {
             let user: IUser = { name: activity.from.name, id: activity.from.id };
-            conversationUsers[queryConversationId] = user.id;
+            //add user conversation info 
+            addUserConversation(user.id, bot.botId, queryConversationId);
+             
             var conversation = new Conversation(queryConversationId, user, bot);
             conversation.postActivityToBot(activity, true, (err, statusCode, activityId) => {
                 if (err || !/^2\d\d$/.test(`${statusCode}`)) {
@@ -145,45 +150,36 @@ export const initializeRoutes = (app: express.Server, config: any) => {
         }
     })
 
+    
+
+
+
      // BOT CONVERSATION ENDPOINT
     app.post('/v3/directline/conversations/:conversationId/upload', (req, res) => { console.warn("/v3/directline/conversations/:conversationId/upload not implemented") })
     app.get('/v3/directline/conversations/:conversationId/stream', (req, res) => { console.warn("/v3/directline/conversations/:conversationId/stream not implemented") })
 
     app.post('/v3/conversations', (req, res) => { 
         console.warn("/v3/conversations");
-        //ap bot 要求建立一個 conversation
-        const auth = req.header('Authorization');
-        //const tokenMatch = /Bearer\s+(.+)/.exec(auth);
-        //let conversationId = tokenMatch[1];
-        //console.log('/v3/conversations', conversationId);
-
         var bot = req.body.bot || {};
+        
         var members = req.body.members || [];
         let conversationId = '';
         if(members.length > 0){
-            const numberId = members[0].id;
-            var convId = Object.keys(conversationUsers).filter(key=>{
-                console.log('conversationUsers', conversationUsers);
-                console.log('conversationUsers key', key);
-                return conversationUsers[key] === numberId;
-            });
-            if(convId.length > 0){
-                conversationId = convId[0];
+            const memberId = members[0].id;
+            var convId = getUserConversationId(memberId, bot.id)
+            if(convId){
+                conversationId = convId;
                 console.log("use conversation with conversationId: " + conversationId);
             }else{
                 conversationId = uuidv4();
                 history[conversationId] = [];
                 console.log("Created conversation with conversationId: " + conversationId);
-                
             }
-          
-            let id = conversationId;
-            let token = conversationId;
             res.status(200).send({
-                conversationId,
-                expires_in,
-                id,
-                token
+                "conversationId" : conversationId,
+                "expires_in" : expires_in,
+                "id":conversationId,
+                "token":conversationId
             });
         }
     });
@@ -204,7 +200,7 @@ export const initializeRoutes = (app: express.Server, config: any) => {
         let queryConversationId = req.params.conversationId;
         activity = req.body;
         activity.id = uuidv4();
-        activity.from = { id: "id", name: "Bot" };
+        //activity.from = { id: bot.botId , name: "Bot" };
 
         if (history) {
             history[queryConversationId].push(activity);
@@ -316,4 +312,39 @@ const getActivitiesSince = (key:string, watermark: number): IActivity[] => {
     return history[key].slice(watermark);
 }
 
+
+const addUserConversation = (userId:string, botId:string, conversationId:string) => {
+    let userConvs : IUserConversation[] = userConversations[userId] || [];
+    //remove bot's info
+    userConvs = _.remove(userConvs, uc => {
+        uc.botId == botId
+    });
+    userConvs.push({botId,  conversationId });
+    userConversations[userId] = userConvs;
+    console.log('userConversations[userId]', userConversations[userId]);
+}
+
+const getUserConversationId = (userId:string, botId:string) => {
+    let userConvs : IUserConversation[] = userConversations[userId] || [];
+    let firstConv = _.find(userConvs, uc => {
+        uc.botId == botId
+    });
+    if(firstConv){
+       return firstConv.conversationId; 
+    }else{
+        console.warn("getUserConversationId empty")
+        return null;
+    }
+}
+
+const getBot = (req: any) =>{
+    const auth = req.header('Authorization');
+    const tokenMatch = /Bearer\s+(.+)/.exec(auth);
+    let apBot:IBot;
+    if(tokenMatch.length > 1){
+        const botId = tokenMatch[1];
+        apBot = _.find(apBots, bot=>bot.botId === botId);
+     }
+     return apBot || apBots[0];
+}
 
