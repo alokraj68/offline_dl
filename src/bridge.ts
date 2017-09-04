@@ -17,26 +17,22 @@ import { IBot, IBotData } from './types/botTypes';
 import { Conversation } from './conversationManager';
 
 const expires_in = 1800;
-//let conversationId: string;
 let botDataStore: { [key: string]: IBotData } = {};
 let history: {[key: string]: IActivity[]} = {};
 let userConversations:{[key:string]: IUserConversation[]} = {};
 let apBots : IBot[] = [];
-/*
-let uniqueId: string = uuidv4();
-let userName: string = `user-${uniqueId}`;
-let user: IUser = { name: userName, id: uniqueId };
-*/
 
-//export const initializeRoutes = (app: express.Server, config: string, bot: IBot) => {
+
+
 export const initializeRoutes = (app: express.Server, config: any) => {
-    const port = config.localDirectLine.port || 3000;
-    let serviceUrl = `${config.localDirectLine.url}:${port}`;
-    console.log(serviceUrl + ':' + port);
-    //todo:目前先固定使用一個
-    //const bot: IBot = config.apbots[0].mybot;
+    const virtualDirPath = process.env.virtualDirPath || '';
+    const serviceUrlPort =  config.localDirectLine.port || 3000;
+    const port = process.env.PORT || serviceUrlPort;
+    //註:在 iis 中的 port 會類似 \\.\pipe\88731ae5-10c4-42dd-8685-91ecf6f13861 
+    let serviceUrl = `${config.localDirectLine.hostUrl}:${serviceUrlPort}${virtualDirPath}`;
+    //在某些 iis node 沒有fun中寫 console.log 會發生錯誤
+    //console.log(serviceUrl);
     apBots = config.apbots;
-    
     app.use(bodyParser.json()); // for parsing application/json
     app.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
     app.use((req, res, next) => {
@@ -46,13 +42,25 @@ export const initializeRoutes = (app: express.Server, config: any) => {
         next();
     });
 
+    
+
     // CLIENT ENDPOINT
-    app.options('/directline', (req, res) => {
-        res.status(200).end();
-    })
+    app.options(`${virtualDirPath}/directline`, (req, res) => {
+        res.send(`${virtualDirPath}/directline`);
+    });
+
+    app.get(`${virtualDirPath}/directline`, (req, res) => {
+        res.send(`${virtualDirPath}/directline`);
+    });
+
+    // ROOT ENDPOINT
+    app.get(`${virtualDirPath}/`, (req, res) => {
+        res.send(`port:${port}, serverUrl:${serviceUrl}`);
+    });
+
 
     //Creates a conversation
-    app.post('/directline/conversations', (req, res) => {
+    app.post(`${virtualDirPath}/directline/conversations`, (req, res) => {
         let conversationId = uuidv4();
         history[conversationId] = [];
         console.log("Created conversation with conversationId: " + conversationId);
@@ -62,18 +70,16 @@ export const initializeRoutes = (app: express.Server, config: any) => {
         });
     })
 
-    
-    app.listen(port, () => {
-        console.log("Listening on port %d", port);
-    });
+    //在某些node v6.10.0 下有 callback會掛
+    app.listen(port);
 
     //reconnect API
-    app.get('/v3/directline/conversations/:conversationId', (req, res) => { console.warn("/v3/directline/conversations/:conversationId not implemented") })
-    app.get('/directline/tokens/generate', (req, res) => { console.warn("/directline/tokens/generate not implemented") })
-    app.get('/directline/tokens/refresh', (req, res) => { console.warn("/directline/tokens/refresh not implemented") })
+    app.get(`${virtualDirPath}/v3/directline/conversations/:conversationId`, (req, res) => { console.warn("/v3/directline/conversations/:conversationId not implemented") })
+    app.get(`${virtualDirPath}/directline/tokens/generate`, (req, res) => { console.warn("/directline/tokens/generate not implemented") })
+    app.get(`${virtualDirPath}/directline/tokens/refresh`, (req, res) => { console.warn("/directline/tokens/refresh not implemented") })
 
     //Gets activities from store (local history array for now)
-    app.get('/directline/conversations/:conversationId/activities', (req, res) => {
+    app.get(`${virtualDirPath}/directline/conversations/:conversationId/activities`, (req, res) => {
         let watermark = Number(req.query.watermark || 0);
         let queryConversationId = req.params.conversationId;
 
@@ -99,7 +105,7 @@ export const initializeRoutes = (app: express.Server, config: any) => {
     })
 
     //Gets activities from store (local history array for now)
-    app.get('/directline/conversations/:conversationId', (req, res) => {
+    app.get(`${virtualDirPath}/directline/conversations/:conversationId`, (req, res) => {
         let watermark = Number(req.query.watermark || 0);
         let queryConversationId = req.params.conversationId;
         if (history[queryConversationId]) {
@@ -127,7 +133,7 @@ export const initializeRoutes = (app: express.Server, config: any) => {
     })
 
     //Sends message to bot. Assumes message activities. 
-    app.post('/directline/conversations/:conversationId/activities', (req, res) => {
+    app.post(`${virtualDirPath}/directline/conversations/:conversationId/activities`, (req, res) => {
         let incomingActivity = req.body;
         let queryConversationId = req.params.conversationId;
         //make copy of activity. Add required fields. 
@@ -150,15 +156,11 @@ export const initializeRoutes = (app: express.Server, config: any) => {
         }
     })
 
-    
+    // BOT CONVERSATION ENDPOINT
+    app.post(`${virtualDirPath}/v3/directline/conversations/:conversationId/upload`, (req, res) => { console.warn("/v3/directline/conversations/:conversationId/upload not implemented") })
+    app.get(`${virtualDirPath}/v3/directline/conversations/:conversationId/stream`, (req, res) => { console.warn("/v3/directline/conversations/:conversationId/stream not implemented") })
 
-
-
-     // BOT CONVERSATION ENDPOINT
-    app.post('/v3/directline/conversations/:conversationId/upload', (req, res) => { console.warn("/v3/directline/conversations/:conversationId/upload not implemented") })
-    app.get('/v3/directline/conversations/:conversationId/stream', (req, res) => { console.warn("/v3/directline/conversations/:conversationId/stream not implemented") })
-
-    app.post('/v3/conversations', (req, res) => { 
+    app.post(`${virtualDirPath}/v3/conversations`, (req, res) => { 
         console.warn("/v3/conversations");
         var bot = req.body.bot || {};
         
@@ -184,7 +186,7 @@ export const initializeRoutes = (app: express.Server, config: any) => {
         }
     });
 
-    app.post('/v3/conversations/:conversationId/activities', (req, res) => { 
+    app.post(`${virtualDirPath}/v3/conversations/:conversationId/activities`, (req, res) => { 
         console.warn("/v3/conversations/:conversationId/activities");
         let incomingActivity = req.body;
         let queryConversationId = req.params.conversationId;
@@ -195,12 +197,11 @@ export const initializeRoutes = (app: express.Server, config: any) => {
         }
     });
 
-    app.post('/v3/conversations/:conversationId/activities/:activityId', (req, res) => {
+    app.post(`${virtualDirPath}/v3/conversations/:conversationId/activities/:activityId`, (req, res) => {
         let activity: IActivity;
         let queryConversationId = req.params.conversationId;
         activity = req.body;
         activity.id = uuidv4();
-        //activity.from = { id: bot.botId , name: "Bot" };
 
         if (history) {
             history[queryConversationId].push(activity);
@@ -212,41 +213,41 @@ export const initializeRoutes = (app: express.Server, config: any) => {
 
     })
 
-    app.get('/v3/conversations/:conversationId/members', (req, res) => { console.warn("/v3/conversations/:conversationId/members not implemented") })
-    app.get('/v3/conversations/:conversationId/activities/:activityId/members', (req, res) => { console.warn("/v3/conversations/:conversationId/activities/:activityId/members") })
+    app.get(`${virtualDirPath}/v3/conversations/:conversationId/members`, (req, res) => { console.warn("/v3/conversations/:conversationId/members not implemented") })
+    app.get(`${virtualDirPath}/v3/conversations/:conversationId/activities/:activityId/members`, (req, res) => { console.warn("/v3/conversations/:conversationId/activities/:activityId/members") })
 
     // BOTSTATE ENDPOINT
 
-    app.get('/v3/botstate/:channelId/users/:userId', (req, res) => {
+    app.get(`${virtualDirPath}/v3/botstate/:channelId/users/:userId`, (req, res) => {
         console.log("Called GET user data");
         getBotData(req, res);
     })
 
-    app.get('/v3/botstate/:channelId/conversations/:conversationId', (req, res) => {
+    app.get(`${virtualDirPath}/v3/botstate/:channelId/conversations/:conversationId`, (req, res) => {
         console.log(("Called GET conversation data"));
         getBotData(req, res);
     })
 
-    app.get('/v3/botstate/:channelId/conversations/:conversationId/users/:userId', (req, res) => {
+    app.get(`${virtualDirPath}/v3/botstate/:channelId/conversations/:conversationId/users/:userId`, (req, res) => {
         console.log("Called GET private conversation data");
         getBotData(req, res);
     })
 
-    app.post('/v3/botstate/:channelId/users/:userId', (req, res) => {
+    app.post(`${virtualDirPath}/v3/botstate/:channelId/users/:userId`, (req, res) => {
         console.log("Called POST setUserData");
         setUserData(req, res);
     })
 
-    app.post('/v3/botstate/:channelId/conversations/:conversationId', (req, res) => {
+    app.post(`${virtualDirPath}/v3/botstate/:channelId/conversations/:conversationId`, (req, res) => {
         console.log("Called POST setConversationData");
         setConversationData(req, res);
     })
 
-    app.post('/v3/botstate/:channelId/conversations/:conversationId/users/:userId', (req, res) => {
+    app.post(`${virtualDirPath}/v3/botstate/:channelId/conversations/:conversationId/users/:userId`, (req, res) => {
         setPrivateConversationData(req, res);
     })
 
-    app.delete('/v3/botstate/:channelId/users/:userId', (req, res) => {
+    app.delete(`${virtualDirPath}/v3/botstate/:channelId/users/:userId`, (req, res) => {
         console.log("Called DELETE deleteStateForUser");
         deleteStateForUser(req, res);
     })

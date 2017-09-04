@@ -38,28 +38,14 @@ In order to run an instance of offline directline, you'll need to create a new p
 
 ```js
 const url = require("url");
-//const directline = require("offline-directline-gss");
-const directline = require("../dist/bridge");
+const directline = require("./dist/bridge");
 const express = require("express");
 const app = express();
 
-// const bot = {
-//     "botId": "mybotid",
-//     "botUrl": "http://localhost:3979/api/messages",
-//     "msaAppId": "",
-//     "msaPassword": ""
-//   };
-// const port = process.env.PORT;
-// const serviceUrl = "http://127.0.0.1:3000:" + port;
-
-// app.set("port", port);
-// app.get('/', function (req, res) {
-//     res.send('Offline Directline Bot Connector');
-// });
 const config = {
     localDirectLine: {
-        url: "http://127.0.0.1",
-        port: "3000"
+            hostUrl: "http://localhost",
+            port: "3000"
         },
 	apbots:[
 		{
@@ -135,3 +121,6 @@ Once everything is running, you should see messages sent in through webchat pass
 * Support 多使用者
 * Support 從 bot 建立新的 conversation ，例如 Conversations.CreateDirectConversationAsync
 * Support 可以接多個 bot ，取自 request Header 的 Authorization 
+### Local DirectLine Server v 1.1.9 調整說明
+* Support IIS 虛擬目錄設定, 測試可以連 IIS 目錄會顯示出該目錄的名稱。請一併調整 web.config 中 appSettings 的 virtualDirPath 設定值。
+
