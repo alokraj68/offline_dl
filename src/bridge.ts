@@ -39,6 +39,7 @@ export const initializeRoutes = (app: express.Server, config: any) => {
         res.header("Access-Control-Allow-Origin", "*");
         res.header("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE, PATCH, OPTIONS");
         res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+        res.header('Cache-Control', 'no-cache');
         next();
     });
 

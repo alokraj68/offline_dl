@@ -124,3 +124,5 @@ Once everything is running, you should see messages sent in through webchat pass
 ### Local DirectLine Server v 1.1.9 調整說明
 * Support IIS 虛擬目錄設定, 測試可以連 IIS 目錄會顯示出該目錄的名稱。請一併調整 web.config 中 appSettings 的 virtualDirPath 設定值。
 
+### Local DirectLine Server v 1.1.10 調整說明
+* response 時，多加入 res.header('Cache-Control', 'no-cache'); 以避免 IE Cache ...

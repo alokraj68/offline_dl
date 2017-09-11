@@ -1,8 +1,8 @@
 {
   "name": "offline-directline-gss",
-  "version": "1.1.9",
+  "version": "1.1.10",
   "description": "Unofficial offline version of the Bot Framework Directline connector fork from https://github.com/sebnema/offline_dl",
-  "homepage": "https://github.com/sebnema/offline_dl",
+  "homepage": "https://github.com/rainmakerho/offline_dl",
   "main": "dist/bridge.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
