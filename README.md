@@ -117,12 +117,13 @@ Offline directline doesn't require a token or secret, so don't worry about these
 
 Once everything is running, you should see messages sent in through webchat passed through to your bot and vice versa. Your bot should also be able to set privateConversationData, conversationData and userData as offered by the botbuilder SDKs.
 
-### Local DirectLine Server v 1.1.8 調整說明
-* Support 多使用者
-* Support 從 bot 建立新的 conversation ，例如 Conversations.CreateDirectConversationAsync
-* Support 可以接多個 bot ，取自 request Header 的 Authorization 
-### Local DirectLine Server v 1.1.9 調整說明
-* Support IIS 虛擬目錄設定, 測試可以連 IIS 目錄會顯示出該目錄的名稱。請一併調整 web.config 中 appSettings 的 virtualDirPath 設定值。
+### Local DirectLine Server v 1.1.8 調整說明 (Adjustment instructions)
+* Support 多使用者 (Multi-user)
+* Support 從 (From) bot 建立新的 (Create a new ) conversation ，例如 (E.g) Conversations.CreateDirectConversationAsync
+* Support 可以接多個 (more than one) bot ，取自(Taken from) request Header 的 (of) Authorization 
+### Local DirectLine Server v 1.1.9 的
+* Support IIS 虛擬目錄設定(Virtual directory settings), 測試可以連(Test can be connected) IIS 目錄會顯示出該目錄的名稱。請一併調整 (
+The directory shows the name of the directory. Please adjust together) web.config 中 (in) appSettings 的(of) virtualDirPath 設定值。(Setting value)
 
-### Local DirectLine Server v 1.1.10 調整說明
-* response 時，多加入 res.header('Cache-Control', 'no-cache'); 以避免 IE Cache ...
+### Local DirectLine Server v 1.1.10 調整說明 (Adjustment instructions)
+* response 時，多加入(When, join more) res.header('Cache-Control', 'no-cache'); 以避免(to avoid) IE Cache ...
